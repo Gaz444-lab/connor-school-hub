@@ -1,14 +1,14 @@
 {
-  "name": "Connor's School Hub",
+  "name": "Connor's School Hub — FHHS Gr 10",
   "short_name": "School Hub",
-  "description": "Homework, projects, tests, timetable and daily school routines",
+  "description": "Grade 10 Fish Hoek High — homework, grades, timetable, study",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f4f6fb",
-  "theme_color": "#4f6df5",
+  "background_color": "#eef2f9",
+  "theme_color": "#1e3a8a",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎒</text></svg>",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"

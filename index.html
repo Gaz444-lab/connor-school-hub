@@ -1,14 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-ZA">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#4f6df5" />
-  <meta name="description" content="Connor's School Hub — homework, projects, tests, timetable & daily routines" />
+  <meta name="theme-color" content="#1e3a8a" />
+  <meta name="description" content="Connor's School Hub — Grade 10 Fish Hoek High. Homework, grades, timetable, study & daily planner." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Connor's School Hub</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
+  <title>Connor's School Hub · FHHS Gr 10</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎒</text></svg>" />
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -16,37 +15,26 @@
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <span class="brand-icon" aria-hidden="true">📚</span>
-        <div>
+        <span class="brand-icon" aria-hidden="true">🎒</span>
+        <div class="brand-text">
           <h1 id="app-title">Connor's School Hub</h1>
           <p class="subtitle" id="date-line"></p>
         </div>
       </div>
       <div class="topbar-actions">
-        <button type="button" class="icon-btn" id="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+        <button type="button" class="icon-btn" id="quick-add" title="Quick add" aria-label="Quick add">＋</button>
+        <button type="button" class="icon-btn" id="theme-toggle" title="Dark mode" aria-label="Toggle theme">🌙</button>
         <button type="button" class="icon-btn" data-view="settings" title="Settings" aria-label="Settings">⚙️</button>
       </div>
     </header>
 
     <nav class="nav" id="main-nav" aria-label="Main">
-      <button type="button" class="nav-btn active" data-view="today">
-        <span class="nav-emoji">☀️</span><span>Today</span>
-      </button>
-      <button type="button" class="nav-btn" data-view="homework">
-        <span class="nav-emoji">📝</span><span>Homework</span>
-      </button>
-      <button type="button" class="nav-btn" data-view="projects">
-        <span class="nav-emoji">🚀</span><span>Projects</span>
-      </button>
-      <button type="button" class="nav-btn" data-view="tests">
-        <span class="nav-emoji">📋</span><span>Tests</span>
-      </button>
-      <button type="button" class="nav-btn" data-view="timetable">
-        <span class="nav-emoji">🗓️</span><span>Schedule</span>
-      </button>
-      <button type="button" class="nav-btn" data-view="routines">
-        <span class="nav-emoji">✅</span><span>Routines</span>
-      </button>
+      <button type="button" class="nav-btn active" data-view="today"><span class="nav-emoji">☀️</span><span>Today</span></button>
+      <button type="button" class="nav-btn" data-view="agenda"><span class="nav-emoji">📅</span><span>Agenda</span></button>
+      <button type="button" class="nav-btn" data-view="work"><span class="nav-emoji">📝</span><span>Work</span></button>
+      <button type="button" class="nav-btn" data-view="grades"><span class="nav-emoji">📊</span><span>Grades</span></button>
+      <button type="button" class="nav-btn" data-view="study"><span class="nav-emoji">⏱️</span><span>Study</span></button>
+      <button type="button" class="nav-btn" data-view="more"><span class="nav-emoji">☰</span><span>More</span></button>
     </nav>
 
     <main id="main" class="main"></main>
@@ -65,7 +53,6 @@
   </div>
 
   <div id="toast" class="toast" hidden></div>
-
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,95 +1,87 @@
-# Connor's School Hub 📚
+# Connor's School Hub 🎒
 
-A simple school organiser for tracking **homework**, **projects**, **tests**, **class schedules**, and **before/after school routines**.
+**Central daily workspace for Grade 10 at Fish Hoek High School.**
 
-Built as a static web app — no server, no install. Data is saved in the browser (localStorage). Perfect for GitHub Pages so Connor can open a link and always get the latest version of the app when you push updates.
+Subjects built in: **Art · Drama · English · Afrikaans · Maths Lit · Life Orientation · History · EGD**
 
-## Features
-
-| Area | What it does |
-|------|----------------|
-| **Today** | Greeting, counts, today's classes, due-soon homework, upcoming tests, routine progress |
-| **Homework** | Add / complete / prioritise assignments by subject and due date |
-| **Projects** | Longer work with a progress bar |
-| **Tests** | Exam dates with countdown and revision notes |
-| **Schedule** | Weekly timetable (Mon–Sun) with times and rooms |
-| **Routines** | Morning “to school” and after-school checklists (reset each day) |
-| **Settings** | Rename student, manage subjects, dark mode, export/import backup |
-
-## Live app (easiest on a MacBook)
-
-**Open in the browser (always the latest code after GitHub Pages builds):**
-
-👉 **https://gaz444-lab.github.io/connor-school-hub/**
-
-Bookmark that URL on Connor’s MacBook, or keep it in the Dock.
+Same idea as AccountHub for Mum: live on the Mac via Desktop shortcuts, updates from GitHub when Dad ships changes. Data stays in the browser on that Mac.
 
 ---
 
-## One-time setup on Connor’s Mac (Desktop shortcut + auto-updates)
+## For Connor’s Mac (after Xcode / git is ready)
 
-On **Connor’s MacBook**, open **Terminal** and paste:
+### First time only
+
+Open **Terminal** and paste:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Gaz444-lab/connor-school-hub/main/scripts/setup-for-connor.sh | bash
 ```
 
-That will:
+That clones into `~/Documents/connor-school-hub` and puts on the **Desktop**:
 
-1. Download the app into `~/Documents/connor-school-hub`
-2. Put **Connor School Hub** on the Desktop
+| Shortcut | When to use |
+|----------|-------------|
+| **School Hub.command** | Every day — opens the app |
+| **Update School Hub.command** | After Dad says he pushed an update |
 
-Then he double-clicks **Connor School Hub** on the Desktop.  
-Each launch: pull latest from GitHub → open the app in the browser.
+macOS may ask to allow Terminal the first time → **Open**.
 
-macOS may ask to allow Terminal the first time — choose **Open**.
+### Every day
 
-### Already cloned?
+1. Double-click **School Hub.command**
+2. Browser opens → `http://127.0.0.1:8765/`
+3. Work in the hub (homework, grades, study timer, etc.)
 
-```bash
-cd ~/Documents/connor-school-hub   # or wherever it lives
-bash scripts/setup-for-connor.sh
-```
+### When Dad ships an update
 
-Or double-click **Open School Hub.command** inside the project folder.
+Double-click **Update School Hub.command**, then open **School Hub** again.
+
+> **Wait for Xcode?** Yes — run the `curl` setup **after** `xcode-select --install` finishes (needs `git`). You do **not** need to re-run setup for every app feature update; use **Update School Hub** for those.
+
+### Optional: website (no install)
+
+https://gaz444-lab.github.io/connor-school-hub/
 
 ---
 
-## Repo
+## What’s in the hub
 
-- GitHub: https://github.com/Gaz444-lab/connor-school-hub  
-- Pages: https://gaz444-lab.github.io/connor-school-hub/
+| Area | Features |
+|------|----------|
+| **Today** | Greeting, due/late counts, next class, focus list, today’s timetable, tests, routines & goals |
+| **Agenda** | Week strip calendar — homework, tests, projects, custom events |
+| **Work** | Homework · Projects · Tests (priorities, due dates, progress bars) |
+| **Grades** | Log marks (score / out of / weight), subject averages, overall average |
+| **Study** | Focus timer (Pomodoro-style), session log, study streak |
+| **More** | Timetable, before/after school routines, subject notes, goals, school links (Classroom, D6, Drive…) |
+| **＋ / Settings** | Quick-add anything · profile · dark mode · export/import backup |
 
-### Updating the app (dad)
+Research-backed student-planner staples: timetable, agenda, grades, reminders via due badges, study blocks, subject organisation, one “command centre” home screen.
 
-Edit files on your machine, then:
+---
+
+## For Dad (your Mac)
+
+Repo: https://github.com/Gaz444-lab/connor-school-hub  
+Local: `~/connor-school-hub`
 
 ```bash
 cd ~/connor-school-hub
-git add .
+# edit files…
+git add -A
 git commit -m "Describe the change"
 git push
 ```
 
-Pages redeploys in about a minute. Connor’s Desktop shortcut also runs `git pull` when he opens it.
+Tell Connor to run **Update School Hub.command**.
 
-> **Note:** App *code* updates via GitHub. Connor’s *personal data* (homework list, etc.) lives in **his** browser. Use **Settings → Export backup** to move data between devices.
-
-## Add to Home Screen (phone)
-
-- **iPhone:** Safari → Share → **Add to Home Screen**
-- **Android:** Chrome → menu → **Add to Home screen** / **Install app**
-
-## Tech
-
-- Plain HTML, CSS, and JavaScript (no build step)
-- Works offline after first load (same device/browser)
-- Optional PWA manifest for home-screen install
-
-## Privacy
-
-Everything stays on the device unless you export a backup file. No accounts, no analytics, no cloud sync built in.
+His marks/homework live in **his** browser localStorage — not in git.
 
 ---
 
-Made for Connor 🎒
+## Tech
+
+Static HTML/CSS/JS · no Node required · Python local server for daily use · GitHub Pages optional.
+
+Made for Connor · Fish Hoek High · Grade 10 🌊
