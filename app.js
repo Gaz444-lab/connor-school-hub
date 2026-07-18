@@ -73,6 +73,7 @@
       school: "Fish Hoek High School",
       grade: "10",
       theme: "light",
+      look: "normal", // normal | glass
       subjects: CONNOR_SUBJECTS.map((s) => ({ ...s })),
       homework: [],
       projects: [],
@@ -265,6 +266,7 @@
 
   function applyTheme() {
     document.documentElement.setAttribute("data-theme", state.theme === "dark" ? "dark" : "light");
+    document.documentElement.setAttribute("data-look", state.look === "glass" ? "glass" : "normal");
     const btn = document.getElementById("theme-toggle");
     if (btn) btn.textContent = state.theme === "dark" ? "☀️" : "🌙";
   }
@@ -1191,7 +1193,30 @@
       </div>
       <div class="card settings-section">
         <h3>Appearance</h3>
-        <button type="button" class="btn btn-secondary" data-action="toggle-theme">Switch to ${state.theme === "dark" ? "light" : "dark"} mode</button>
+        <p class="text-sm text-muted mb-8">Colour mode</p>
+        <div class="choice-row mb-12">
+          <button type="button" class="choice-btn ${state.theme === "light" ? "active" : ""}" data-action="set-theme" data-value="light">
+            <span class="choice-icon">☀️</span>
+            <span>Light</span>
+          </button>
+          <button type="button" class="choice-btn ${state.theme === "dark" ? "active" : ""}" data-action="set-theme" data-value="dark">
+            <span class="choice-icon">🌙</span>
+            <span>Dark</span>
+          </button>
+        </div>
+        <p class="text-sm text-muted mb-8">Look</p>
+        <div class="choice-row">
+          <button type="button" class="choice-btn ${state.look !== "glass" ? "active" : ""}" data-action="set-look" data-value="normal">
+            <span class="choice-icon">▢</span>
+            <span>Normal</span>
+            <small>Solid cards</small>
+          </button>
+          <button type="button" class="choice-btn ${state.look === "glass" ? "active" : ""}" data-action="set-look" data-value="glass">
+            <span class="choice-icon">◇</span>
+            <span>Glass</span>
+            <small>Frosted blur</small>
+          </button>
+        </div>
       </div>
       <div class="card settings-section">
         <h3>Backup</h3>
@@ -1873,6 +1898,27 @@
         applyTheme();
         render();
         break;
+      case "set-theme": {
+        const v = el.dataset.value;
+        if (v === "light" || v === "dark") {
+          state.theme = v;
+          save();
+          applyTheme();
+          render();
+        }
+        break;
+      }
+      case "set-look": {
+        const v = el.dataset.value;
+        if (v === "normal" || v === "glass") {
+          state.look = v;
+          save();
+          applyTheme();
+          toast(v === "glass" ? "Glass look on" : "Normal look on");
+          render();
+        }
+        break;
+      }
       case "add-subject": {
         const name = prompt("Subject name:");
         if (name?.trim()) {
