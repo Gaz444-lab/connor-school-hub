@@ -55,7 +55,6 @@
   let state = loadState();
   let currentView = "today";
   let workTab = "homework";
-  let moreTab = null; // timetable | routines | notes | links | goals | null shows menu
   let selectedDay = todayWeekdayIndex();
   let agendaDate = todayISO();
   let hwFilter = "open";
@@ -342,23 +341,14 @@
 
   // ——— Navigation ———
   function setView(view) {
-    if (["timetable", "routines", "notes", "links", "goals"].includes(view)) {
-      moreTab = view;
-      currentView = "more";
-    } else {
-      currentView = view;
-      if (view !== "more") moreTab = null;
-    }
+    currentView = view || "today";
     render();
   }
 
   // Left sidebar (and settings in sidebar footer)
   document.querySelector(".sidebar")?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-view]");
-    if (btn) {
-      moreTab = null;
-      setView(btn.dataset.view);
-    }
+    if (btn) setView(btn.dataset.view);
   });
 
   document.querySelector(".topbar-actions")?.addEventListener("click", (e) => {
@@ -428,7 +418,11 @@
       work: renderWork,
       grades: renderGrades,
       study: renderStudy,
-      more: renderMore,
+      timetable: renderTimetable,
+      routines: renderRoutines,
+      notes: renderNotes,
+      goals: renderGoals,
+      links: renderLinks,
       settings: renderSettings,
     };
     main.innerHTML = (map[currentView] || renderToday)();
@@ -975,31 +969,7 @@
     if (currentView === "study") render();
   }
 
-  // ——— MORE ———
-  function renderMore() {
-    if (moreTab === "timetable") return renderTimetable();
-    if (moreTab === "routines") return renderRoutines();
-    if (moreTab === "notes") return renderNotes();
-    if (moreTab === "links") return renderLinks();
-    if (moreTab === "goals") return renderGoals();
-
-    return `
-      <div class="view-header">
-        <div>
-          <h2>More</h2>
-          <p>Schedule, notes, links & goals</p>
-        </div>
-      </div>
-      <div class="more-grid">
-        <button type="button" class="more-tile" data-goto="timetable"><span>🗓️</span>Timetable<small>Weekly class schedule</small></button>
-        <button type="button" class="more-tile" data-goto="routines"><span>✅</span>Routines<small>To school & home</small></button>
-        <button type="button" class="more-tile" data-goto="notes"><span>📓</span>Notes<small>Per subject scratchpad</small></button>
-        <button type="button" class="more-tile" data-goto="goals"><span>🎯</span>Goals<small>Weekly targets</small></button>
-        <button type="button" class="more-tile" data-goto="links"><span>🔗</span>Links<small>Classroom, D6, Drive</small></button>
-        <button type="button" class="more-tile" data-goto="settings"><span>⚙️</span>Settings<small>Profile & backup</small></button>
-      </div>`;
-  }
-
+  // ——— SIDEBAR SECTIONS ———
   function renderTimetable() {
     const dayName = DAYS[selectedDay];
     const periods = (state.timetable[dayName] || []).slice().sort(sortPeriods);
@@ -1007,7 +977,6 @@
     return `
       <div class="view-header">
         <div>
-          <button type="button" class="btn btn-ghost btn-sm mb-8" data-goto="more">← More</button>
           <h2>Timetable</h2>
           <p>Fish Hoek High · weekly schedule</p>
         </div>
@@ -1053,7 +1022,6 @@
     return `
       <div class="view-header">
         <div>
-          <button type="button" class="btn btn-ghost btn-sm mb-8" data-goto="more">← More</button>
           <h2>Routines</h2>
           <p>Resets every morning · stay ready for school</p>
         </div>
@@ -1090,7 +1058,6 @@
     return `
       <div class="view-header">
         <div>
-          <button type="button" class="btn btn-ghost btn-sm mb-8" data-goto="more">← More</button>
           <h2>Notes</h2>
           <p>Quick notes by subject</p>
         </div>
@@ -1125,7 +1092,6 @@
     return `
       <div class="view-header">
         <div>
-          <button type="button" class="btn btn-ghost btn-sm mb-8" data-goto="more">← More</button>
           <h2>Goals</h2>
           <p>Weekly targets keep Grade 10 on track</p>
         </div>
@@ -1159,7 +1125,6 @@
     return `
       <div class="view-header">
         <div>
-          <button type="button" class="btn btn-ghost btn-sm mb-8" data-goto="more">← More</button>
           <h2>Links</h2>
           <p>School tools one click away</p>
         </div>
