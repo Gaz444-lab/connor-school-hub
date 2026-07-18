@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#4f6df5" />
+  <meta name="description" content="Connor's School Hub — homework, projects, tests, timetable & daily routines" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Connor's School Hub</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">📚</span>
+        <div>
+          <h1 id="app-title">Connor's School Hub</h1>
+          <p class="subtitle" id="date-line"></p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button type="button" class="icon-btn" id="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+        <button type="button" class="icon-btn" data-view="settings" title="Settings" aria-label="Settings">⚙️</button>
+      </div>
+    </header>
+
+    <nav class="nav" id="main-nav" aria-label="Main">
+      <button type="button" class="nav-btn active" data-view="today">
+        <span class="nav-emoji">☀️</span><span>Today</span>
+      </button>
+      <button type="button" class="nav-btn" data-view="homework">
+        <span class="nav-emoji">📝</span><span>Homework</span>
+      </button>
+      <button type="button" class="nav-btn" data-view="projects">
+        <span class="nav-emoji">🚀</span><span>Projects</span>
+      </button>
+      <button type="button" class="nav-btn" data-view="tests">
+        <span class="nav-emoji">📋</span><span>Tests</span>
+      </button>
+      <button type="button" class="nav-btn" data-view="timetable">
+        <span class="nav-emoji">🗓️</span><span>Schedule</span>
+      </button>
+      <button type="button" class="nav-btn" data-view="routines">
+        <span class="nav-emoji">✅</span><span>Routines</span>
+      </button>
+    </nav>
+
+    <main id="main" class="main"></main>
+  </div>
+
+  <div id="modal-root" class="modal-root" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h2 id="modal-title">Edit</h2>
+        <button type="button" class="icon-btn" data-close-modal aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
