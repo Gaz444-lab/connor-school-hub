@@ -13,31 +13,56 @@
 </head>
 <body>
   <div class="app">
-    <header class="topbar">
-      <div class="brand">
+    <aside class="sidebar" aria-label="Sidebar">
+      <div class="sidebar-brand">
         <span class="brand-icon" aria-hidden="true">🎒</span>
         <div class="brand-text">
           <h1 id="app-title">Connor's School Hub</h1>
-          <p class="subtitle" id="date-line"></p>
+          <p class="subtitle" id="sidebar-school">Fish Hoek High · Gr 10</p>
         </div>
       </div>
-      <div class="topbar-actions">
-        <button type="button" class="icon-btn" id="quick-add" title="Quick add" aria-label="Quick add">＋</button>
-        <button type="button" class="icon-btn" id="theme-toggle" title="Dark mode" aria-label="Toggle theme">🌙</button>
-        <button type="button" class="icon-btn" data-view="settings" title="Settings" aria-label="Settings">⚙️</button>
+
+      <nav class="nav" id="main-nav" aria-label="Main">
+        <button type="button" class="nav-btn active" data-view="today">
+          <span class="nav-emoji">☀️</span><span>Today</span>
+        </button>
+        <button type="button" class="nav-btn" data-view="agenda">
+          <span class="nav-emoji">📅</span><span>Agenda</span>
+        </button>
+        <button type="button" class="nav-btn" data-view="work">
+          <span class="nav-emoji">📝</span><span>Work</span>
+        </button>
+        <button type="button" class="nav-btn" data-view="grades">
+          <span class="nav-emoji">📊</span><span>Grades</span>
+        </button>
+        <button type="button" class="nav-btn" data-view="study">
+          <span class="nav-emoji">⏱️</span><span>Study</span>
+        </button>
+        <button type="button" class="nav-btn" data-view="more">
+          <span class="nav-emoji">☰</span><span>More</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button type="button" class="nav-btn" data-view="settings">
+          <span class="nav-emoji">⚙️</span><span>Settings</span>
+        </button>
       </div>
-    </header>
+    </aside>
 
-    <nav class="nav" id="main-nav" aria-label="Main">
-      <button type="button" class="nav-btn active" data-view="today"><span class="nav-emoji">☀️</span><span>Today</span></button>
-      <button type="button" class="nav-btn" data-view="agenda"><span class="nav-emoji">📅</span><span>Agenda</span></button>
-      <button type="button" class="nav-btn" data-view="work"><span class="nav-emoji">📝</span><span>Work</span></button>
-      <button type="button" class="nav-btn" data-view="grades"><span class="nav-emoji">📊</span><span>Grades</span></button>
-      <button type="button" class="nav-btn" data-view="study"><span class="nav-emoji">⏱️</span><span>Study</span></button>
-      <button type="button" class="nav-btn" data-view="more"><span class="nav-emoji">☰</span><span>More</span></button>
-    </nav>
+    <div class="content">
+      <header class="topbar">
+        <div class="brand-text topbar-meta">
+          <p class="subtitle" id="date-line"></p>
+        </div>
+        <div class="topbar-actions">
+          <button type="button" class="icon-btn" id="quick-add" title="Quick add" aria-label="Quick add">＋</button>
+          <button type="button" class="icon-btn" id="theme-toggle" title="Dark mode" aria-label="Toggle theme">🌙</button>
+        </div>
+      </header>
 
-    <main id="main" class="main"></main>
+      <main id="main" class="main"></main>
+    </div>
   </div>
 
   <div id="modal-root" class="modal-root" hidden>

@@ -349,13 +349,11 @@
       currentView = view;
       if (view !== "more") moreTab = null;
     }
-    document.querySelectorAll(".nav-btn").forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.view === currentView);
-    });
     render();
   }
 
-  document.getElementById("main-nav").addEventListener("click", (e) => {
+  // Left sidebar (and settings in sidebar footer)
+  document.querySelector(".sidebar")?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-view]");
     if (btn) {
       moreTab = null;
@@ -363,7 +361,7 @@
     }
   });
 
-  document.querySelector(".topbar-actions").addEventListener("click", (e) => {
+  document.querySelector(".topbar-actions")?.addEventListener("click", (e) => {
     if (e.target.closest("#theme-toggle")) {
       state.theme = state.theme === "dark" ? "light" : "dark";
       save();
@@ -374,7 +372,6 @@
       openQuickAdd();
       return;
     }
-    if (e.target.closest("[data-view='settings']")) setView("settings");
   });
 
   function openQuickAdd() {
@@ -413,9 +410,16 @@
   function render() {
     resetRoutinesIfNewDay();
     const schoolLine = `${state.school || "School"} · Grade ${state.grade || "—"}`;
-    document.getElementById("date-line").textContent = `${formatLongDate()} · ${schoolLine}`;
+    document.getElementById("date-line").textContent = formatLongDate();
     document.getElementById("app-title").textContent = `${state.studentName}'s School Hub`;
+    const schoolEl = document.getElementById("sidebar-school");
+    if (schoolEl) schoolEl.textContent = schoolLine;
     document.title = `${state.studentName}'s School Hub · Gr ${state.grade}`;
+
+    // Highlight active nav (including Settings in sidebar footer)
+    document.querySelectorAll(".sidebar [data-view]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.view === currentView);
+    });
 
     const main = document.getElementById("main");
     const map = {
