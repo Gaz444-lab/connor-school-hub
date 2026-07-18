@@ -767,6 +767,53 @@ button { cursor: pointer; border: none; background: none; }
   display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
 }
 
+/* Assessments */
+.assess-item.highlighted {
+  border: 1px solid color-mix(in srgb, var(--warn) 55%, var(--border));
+  background: color-mix(in srgb, var(--warn-soft) 55%, var(--bg));
+}
+.assess-item.likely-mine {
+  border-left: 3px solid var(--green);
+}
+.assess-item.compact {
+  padding: 8px 10px;
+}
+.star-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  line-height: 1;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--border);
+  transition: background 0.15s, transform 0.1s, border-color 0.15s;
+}
+.star-btn:hover {
+  border-color: var(--warn);
+  transform: scale(1.05);
+}
+.star-btn.on {
+  color: #d97706;
+  background: var(--warn-soft);
+  border-color: color-mix(in srgb, var(--warn) 50%, var(--border));
+}
+#assess-search {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  outline: none;
+}
+#assess-search:focus {
+  border-color: var(--accent-bright);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-bright) 22%, transparent);
+}
+
 /* Memories gallery */
 .memory-grid {
   display: grid;

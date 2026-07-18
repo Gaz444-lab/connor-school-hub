@@ -59,6 +59,10 @@
   let agendaDate = todayISO();
   let hwFilter = "open";
   let gradeSubjectFilter = "all";
+  let assessFilter = "grade10"; // grade10 | mine | starred | all
+  let assessTerm = "all"; // all | T1 | T2 | T3 | T4
+  let assessQuery = "";
+  let assessCatalog = null; // loaded from data/assessments-2026.json
   let toastTimer = null;
   let studyTimer = null;
   let studyRemaining = 25 * 60;
@@ -86,6 +90,8 @@
       timetable: {},
       links: DEFAULT_LINKS.map((l) => ({ ...l })),
       memories: [],
+      /** Assessment ids starred as "affects me" from the 2026 FHHS timetable */
+      assessmentHighlights: {},
       routines: {
         morning: DEFAULT_ROUTINES.morning.map((r) => ({ ...r })),
         afternoon: DEFAULT_ROUTINES.afternoon.map((r) => ({ ...r })),
@@ -140,6 +146,7 @@
         goals: parsed.goals || [],
         studyLog: parsed.studyLog || [],
         memories: parsed.memories || [],
+        assessmentHighlights: parsed.assessmentHighlights || {},
       };
     } catch {
       return defaultState();
@@ -422,6 +429,7 @@
       today: renderToday,
       agenda: renderAgenda,
       work: renderWork,
+      assessments: renderAssessments,
       grades: renderGrades,
       study: renderStudy,
       timetable: renderTimetable,
@@ -459,6 +467,10 @@
     const avg = overallAverage();
     const mDone = state.routines.morning.filter((r) => r.done).length;
     const aDone = state.routines.afternoon.filter((r) => r.done).length;
+    const myAssess = (assessCatalog?.assessments || [])
+      .filter((a) => isHighlighted(a.id) && a.date && daysUntil(a.date) !== null && daysUntil(a.date) >= 0 && daysUntil(a.date) <= 14)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 5);
 
     return `
       <div class="greeting">
@@ -525,6 +537,31 @@
                  <button type="button" class="btn btn-secondary btn-sm" data-goto="timetable">Set schedule</button></div>`
           }
         </div>
+      </div>
+      <div class="card mt-12 mb-12">
+        <h3 class="card-title">My assessments (next 2 weeks)
+          <button type="button" class="btn btn-ghost btn-sm" data-goto="assessments">All →</button>
+        </h3>
+        ${
+          myAssess.length
+            ? `<div class="item-list">${myAssess
+                .map(
+                  (a) =>
+                    `<div class="item assess-item highlighted compact">
+                      <span class="star-btn on">⭐</span>
+                      <div class="item-body">
+                        <p class="item-title">${esc(a.title)}</p>
+                        <div class="item-meta">
+                          <span class="badge ${dueLabel(a.date).cls}">${esc(dueLabel(a.date).text)}</span>
+                          ${a.subjectGuess ? `<span class="badge">${esc(a.subjectGuess)}</span>` : ""}
+                          ${a.time ? `<span>${esc(a.time)}</span>` : ""}
+                        </div>
+                      </div>
+                    </div>`
+                )
+                .join("")}</div>`
+            : `<p class="text-sm text-muted">Nothing highlighted yet. Open <button type="button" class="btn btn-secondary btn-sm" data-goto="assessments">Assessments</button> and star the ones that affect you (or use Auto-highlight my subjects).</p>`
+        }
       </div>
       <div class="grid-2 mt-12">
         <div class="card">
@@ -974,6 +1011,203 @@
       studyRemaining = (state.focusMinutes || 25) * 60;
     }
     if (currentView === "study") render();
+  }
+
+  // ——— ASSESSMENTS (2026 FHHS timetable) ———
+  const CONNOR_SUBJECT_KEYS = [
+    "art",
+    "drama",
+    "english",
+    "afrikaans",
+    "maths lit",
+    "math. lit",
+    "math lit",
+    "life orientation",
+    "history",
+    "egd",
+  ];
+
+  function isHighlighted(id) {
+    return !!(state.assessmentHighlights && state.assessmentHighlights[id]);
+  }
+
+  function toggleHighlight(id) {
+    if (!state.assessmentHighlights) state.assessmentHighlights = {};
+    if (state.assessmentHighlights[id]) delete state.assessmentHighlights[id];
+    else state.assessmentHighlights[id] = true;
+    save();
+  }
+
+  function matchesMySubjects(a) {
+    const sub = (a.subjectGuess || "").toLowerCase();
+    const title = (a.title || "").toLowerCase();
+    // Connor: Maths Lit not pure Maths
+    if (sub === "maths" && !title.includes("lit")) return false;
+    if (sub === "maths lit" || title.includes("maths lit") || title.includes("math. lit")) return true;
+    for (const k of CONNOR_SUBJECT_KEYS) {
+      if (sub.includes(k) || title.includes(k)) return true;
+    }
+    // Visual art
+    if (title.includes("v.art") || title.includes("visual art") || title.includes("vis art")) return true;
+    return false;
+  }
+
+  function filteredAssessments() {
+    if (!assessCatalog?.assessments) return [];
+    let list = assessCatalog.assessments.slice();
+    if (assessTerm !== "all") list = list.filter((a) => a.term === assessTerm);
+    if (assessFilter === "grade10") list = list.filter((a) => a.grade === 10 || a.grade === null);
+    else if (assessFilter === "mine") {
+      list = list.filter(
+        (a) =>
+          (a.grade === 10 || a.grade === null) &&
+          (isHighlighted(a.id) || matchesMySubjects(a))
+      );
+    } else if (assessFilter === "starred") {
+      list = list.filter((a) => isHighlighted(a.id));
+    }
+    if (assessQuery.trim()) {
+      const q = assessQuery.trim().toLowerCase();
+      list = list.filter(
+        (a) =>
+          (a.title || "").toLowerCase().includes(q) ||
+          (a.subjectGuess || "").toLowerCase().includes(q) ||
+          (a.venue || "").toLowerCase().includes(q)
+      );
+    }
+    list.sort((a, b) => {
+      const ha = isHighlighted(a.id) ? 0 : 1;
+      const hb = isHighlighted(b.id) ? 0 : 1;
+      if (ha !== hb && assessFilter === "grade10") {
+        /* keep date order; starred still visible via badge */
+      }
+      return (a.date || "9999").localeCompare(b.date || "9999") || (a.title || "").localeCompare(b.title || "");
+    });
+    return list;
+  }
+
+  function renderAssessments() {
+    if (!assessCatalog) {
+      return `
+        <div class="view-header">
+          <div>
+            <h2>Assessments</h2>
+            <p>2026 Fish Hoek High timetable</p>
+          </div>
+        </div>
+        <div class="card"><div class="empty"><p>Loading assessment timetable…</p></div></div>`;
+    }
+
+    const list = filteredAssessments();
+    const starredCount = Object.keys(state.assessmentHighlights || {}).length;
+    const upcomingStarred = (assessCatalog.assessments || [])
+      .filter((a) => isHighlighted(a.id) && a.date && a.date >= todayISO())
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 5);
+
+    return `
+      <div class="view-header">
+        <div>
+          <h2>Assessments</h2>
+          <p>${esc(assessCatalog.source || "2026 timetable")} · tap ⭐ for ones that affect you</p>
+        </div>
+      </div>
+      <div class="card mb-12">
+        <p class="text-sm text-muted" style="margin:0 0 8px">
+          ${esc(assessCatalog.note || "")}
+          Highlighted: <strong>${starredCount}</strong>
+        </p>
+        ${
+          upcomingStarred.length
+            ? `<div class="item-list">${upcomingStarred
+                .map(
+                  (a) =>
+                    `<div class="item assess-item highlighted compact">
+                      <span class="star-btn on">⭐</span>
+                      <div class="item-body">
+                        <p class="item-title">${esc(a.title)}</p>
+                        <div class="item-meta">
+                          <span class="badge soon">${a.date ? formatDate(a.date) : "Date TBC"}</span>
+                          ${a.subjectGuess ? `<span class="badge">${esc(a.subjectGuess)}</span>` : ""}
+                        </div>
+                      </div>
+                    </div>`
+                )
+                .join("")}</div>`
+            : `<p class="text-sm text-muted" style="margin:0">Star Grade 10 items for your subjects to pin them here and on Today.</p>`
+        }
+      </div>
+      <div class="filters">
+        <button type="button" class="chip ${assessFilter === "grade10" ? "active" : ""}" data-assess-filter="grade10">Grade 10 + school</button>
+        <button type="button" class="chip ${assessFilter === "mine" ? "active" : ""}" data-assess-filter="mine">Likely mine</button>
+        <button type="button" class="chip ${assessFilter === "starred" ? "active" : ""}" data-assess-filter="starred">⭐ Highlighted</button>
+        <button type="button" class="chip ${assessFilter === "all" ? "active" : ""}" data-assess-filter="all">All grades</button>
+      </div>
+      <div class="filters">
+        <button type="button" class="chip ${assessTerm === "all" ? "active" : ""}" data-assess-term="all">All terms</button>
+        ${["T1", "T2", "T3", "T4"]
+          .map(
+            (t) =>
+              `<button type="button" class="chip ${assessTerm === t ? "active" : ""}" data-assess-term="${t}">${t}</button>`
+          )
+          .join("")}
+      </div>
+      <div class="field mb-12">
+        <input id="assess-search" type="search" placeholder="Search title, subject, venue…" value="${esc(assessQuery)}" />
+      </div>
+      <div class="flex-between mb-12">
+        <span class="text-sm text-muted">${list.length} item${list.length === 1 ? "" : "s"}</span>
+        <button type="button" class="btn btn-secondary btn-sm" data-action="auto-star-mine">Auto-highlight my subjects</button>
+      </div>
+      <div class="card">
+        ${
+          list.length
+            ? `<div class="item-list">${list.map(assessmentItemHtml).join("")}</div>`
+            : `<div class="empty"><div class="empty-icon">📌</div><p>Nothing matches these filters.</p></div>`
+        }
+      </div>`;
+  }
+
+  function assessmentItemHtml(a) {
+    const starred = isHighlighted(a.id);
+    const due = a.date ? dueLabel(a.date) : { text: "Date TBC", cls: "" };
+    const likely = matchesMySubjects(a) && (a.grade === 10 || a.grade === null);
+    return `
+      <div class="item assess-item ${starred ? "highlighted" : ""} ${likely && !starred ? "likely-mine" : ""}">
+        <button type="button" class="star-btn ${starred ? "on" : ""}" data-action="toggle-assess" data-id="${a.id}" title="Highlight if this affects you" aria-label="Highlight">
+          ${starred ? "⭐" : "☆"}
+        </button>
+        <div class="item-body">
+          <p class="item-title">${esc(a.title)}</p>
+          <div class="item-meta">
+            ${a.date ? `<span class="badge ${due.cls || ""}">${esc(due.text || formatDate(a.date))}</span>` : `<span class="badge">Date TBC</span>`}
+            ${a.term ? `<span class="badge">${esc(a.term)}</span>` : ""}
+            ${a.grade != null ? `<span class="badge">Gr ${a.grade}</span>` : `<span class="badge">School</span>`}
+            ${a.kind === "exam" ? `<span class="badge type-test">Exam / venue</span>` : ""}
+            ${a.subjectGuess ? `<span class="badge subject" style="--subject:var(--accent-bright)">${esc(a.subjectGuess)}</span>` : ""}
+            ${likely ? `<span class="badge type-goal">Likely you</span>` : ""}
+            ${a.time ? `<span>${esc(a.time)}</span>` : ""}
+            ${a.hours ? `<span>${esc(a.hours)}</span>` : ""}
+            ${a.venue ? `<span class="text-muted">📍 ${esc(a.venue)}</span>` : ""}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function autoStarMySubjects() {
+    if (!assessCatalog?.assessments) return 0;
+    let n = 0;
+    if (!state.assessmentHighlights) state.assessmentHighlights = {};
+    assessCatalog.assessments.forEach((a) => {
+      if ((a.grade === 10 || a.grade === null) && matchesMySubjects(a)) {
+        if (!state.assessmentHighlights[a.id]) {
+          state.assessmentHighlights[a.id] = true;
+          n++;
+        }
+      }
+    });
+    save();
+    return n;
   }
 
   // ——— SIDEBAR SECTIONS ———
@@ -1842,6 +2076,25 @@
   // ——— Events ———
   function bindMain(main) {
     main.onclick = onMainClick;
+    const search = main.querySelector("#assess-search");
+    if (search) {
+      search.oninput = () => {
+        assessQuery = search.value;
+        // light debounce via rAF
+        cancelAnimationFrame(search._raf);
+        search._raf = requestAnimationFrame(() => {
+          const pos = search.selectionStart;
+          render();
+          const again = document.getElementById("assess-search");
+          if (again) {
+            again.focus();
+            try {
+              again.setSelectionRange(pos, pos);
+            } catch (_) {}
+          }
+        });
+      };
+    }
   }
 
   function onMainClick(e) {
@@ -1881,6 +2134,18 @@
     const gf = e.target.closest("[data-grade-filter]");
     if (gf) {
       gradeSubjectFilter = gf.dataset.gradeFilter;
+      render();
+      return;
+    }
+    const af = e.target.closest("[data-assess-filter]");
+    if (af) {
+      assessFilter = af.dataset.assessFilter;
+      render();
+      return;
+    }
+    const at = e.target.closest("[data-assess-term]");
+    if (at) {
+      assessTerm = at.dataset.assessTerm;
       render();
       return;
     }
@@ -2090,6 +2355,19 @@
         }
         break;
 
+      case "toggle-assess":
+        toggleHighlight(id);
+        toast(isHighlighted(id) ? "Highlighted — affects you" : "Highlight removed");
+        render();
+        break;
+      case "auto-star-mine": {
+        const n = autoStarMySubjects();
+        toast(n ? `Highlighted ${n} new item${n === 1 ? "" : "s"} for your subjects` : "Already highlighted (or none matched)");
+        assessFilter = "starred";
+        render();
+        break;
+      }
+
       case "timer-toggle":
         studyRunning = !studyRunning;
         if (studyRunning) startTimerTick();
@@ -2231,5 +2509,27 @@
   // ——— Boot ———
   applyTheme();
   studyRemaining = (state.focusMinutes || 25) * 60;
+
+  function loadAssessmentCatalog() {
+    return fetch("data/assessments-2026.json", { cache: "no-store" })
+      .then((r) => {
+        if (!r.ok) throw new Error("missing");
+        return r.json();
+      })
+      .then((data) => {
+        assessCatalog = data;
+        if (currentView === "assessments" || currentView === "today") render();
+      })
+      .catch(() => {
+        assessCatalog = {
+          source: "Assessment timetable unavailable",
+          note: "Could not load data/assessments-2026.json — open via School Hub.command (local server), not as a raw file.",
+          assessments: [],
+        };
+        if (currentView === "assessments") render();
+      });
+  }
+
+  loadAssessmentCatalog();
   render();
 })();
