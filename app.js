@@ -85,6 +85,7 @@
       studyLog: [],
       timetable: {},
       links: DEFAULT_LINKS.map((l) => ({ ...l })),
+      memories: [],
       routines: {
         morning: DEFAULT_ROUTINES.morning.map((r) => ({ ...r })),
         afternoon: DEFAULT_ROUTINES.afternoon.map((r) => ({ ...r })),
@@ -138,6 +139,7 @@
         events: parsed.events || [],
         goals: parsed.goals || [],
         studyLog: parsed.studyLog || [],
+        memories: parsed.memories || [],
       };
     } catch {
       return defaultState();
@@ -378,6 +380,7 @@
           <button type="button" data-qa="note"><span>📓</span>Note</button>
           <button type="button" data-qa="event"><span>📅</span>Event</button>
           <button type="button" data-qa="goal"><span>🎯</span>Goal</button>
+          <button type="button" data-qa="memory"><span>📸</span>Memory</button>
           <button type="button" data-qa="study"><span>⏱️</span>Start study</button>
         </div>`,
       footerHtml: `<button type="button" class="btn btn-ghost" data-close-modal>Close</button>`,
@@ -393,6 +396,7 @@
         else if (t === "note") openNoteModal(null);
         else if (t === "event") openEventModal(null);
         else if (t === "goal") openGoalModal(null);
+        else if (t === "memory") openMemoryModal(null);
         else if (t === "study") setView("study");
       };
     });
@@ -425,6 +429,7 @@
       notes: renderNotes,
       goals: renderGoals,
       links: renderLinks,
+      memories: renderMemories,
       settings: renderSettings,
     };
     main.innerHTML = (map[currentView] || renderToday)();
@@ -1152,6 +1157,223 @@
       </div>`;
   }
 
+  // ——— MEMORIES ———
+  function renderMemories() {
+    const list = state.memories
+      .slice()
+      .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
+    return `
+      <div class="view-header">
+        <div>
+          <h2>Memories</h2>
+          <p>Photos & moments from Fish Hoek High</p>
+        </div>
+        <button type="button" class="btn btn-primary" data-action="add-memory">+ Memory</button>
+      </div>
+      <div class="card mb-12">
+        <p class="text-sm text-muted" style="margin:0">
+          Save sports days, shows, trips, friends, and school events. Photos are stored on this Mac only (kept small so they fit).
+          Export a backup from Settings if you want a copy.
+        </p>
+      </div>
+      ${
+        list.length
+          ? `<div class="memory-grid">
+              ${list.map(memoryCardHtml).join("")}
+            </div>`
+          : `<div class="card">
+              <div class="empty">
+                <div class="empty-icon">📸</div>
+                <p>No memories yet. Add a photo or write about something that happened at school.</p>
+                <button type="button" class="btn btn-primary btn-sm" data-action="add-memory">Add first memory</button>
+              </div>
+            </div>`
+      }`;
+  }
+
+  function memoryCardHtml(m) {
+    const kind = m.kind || (m.photo ? "photo" : "event");
+    const kindLabel = kind === "photo" ? "Photo" : kind === "event" ? "Event" : "Moment";
+    const kindCls = kind === "photo" ? "type-photo" : kind === "event" ? "type-event" : "type-goal";
+    return `
+      <article class="memory-card">
+        <div class="memory-media ${m.photo ? "" : "no-photo"}">
+          ${
+            m.photo
+              ? `<img src="${m.photo}" alt="${esc(m.title)}" loading="lazy" />`
+              : `<div class="memory-placeholder">${kind === "event" ? "📅" : "✨"}</div>`
+          }
+        </div>
+        <div class="memory-body">
+          <div class="item-meta mb-8">
+            <span class="badge ${kindCls}">${kindLabel}</span>
+            ${m.date ? `<span>${formatDate(m.date)}</span>` : ""}
+          </div>
+          <h3 class="memory-title">${esc(m.title)}</h3>
+          ${m.notes ? `<p class="memory-notes">${esc(m.notes)}</p>` : ""}
+          <div class="memory-actions">
+            <button type="button" class="btn btn-ghost btn-sm" data-action="edit-memory" data-id="${m.id}">Edit</button>
+            <button type="button" class="btn btn-danger btn-sm" data-action="del-memory" data-id="${m.id}">Delete</button>
+          </div>
+        </div>
+      </article>`;
+  }
+
+  function compressImageFile(file, maxSide = 1200, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type.startsWith("image/")) {
+        reject(new Error("Not an image"));
+        return;
+      }
+      // Skip tiny files
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Read failed"));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("Image load failed"));
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxSide || height > maxSide) {
+            if (width >= height) {
+              height = Math.round((height * maxSide) / width);
+              width = maxSide;
+            } else {
+              width = Math.round((width * maxSide) / height);
+              height = maxSide;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          try {
+            resolve(canvas.toDataURL("image/jpeg", quality));
+          } catch (err) {
+            reject(err);
+          }
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function openMemoryModal(existing) {
+    const m = existing || {
+      title: "",
+      date: todayISO(),
+      kind: "event",
+      notes: "",
+      photo: "",
+    };
+    let pendingPhoto = m.photo || "";
+
+    openModal({
+      title: existing ? "Edit memory" : "New memory",
+      bodyHtml: `
+        <div class="form-stack">
+          <div class="field">
+            <label for="mem-title">Title</label>
+            <input id="mem-title" value="${esc(m.title)}" placeholder="e.g. Interhouse athletics" />
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="mem-date">Date</label>
+              <input type="date" id="mem-date" value="${esc(m.date || "")}" />
+            </div>
+            <div class="field">
+              <label for="mem-kind">Type</label>
+              <select id="mem-kind">
+                <option value="event" ${m.kind === "event" || !m.kind ? "selected" : ""}>Event</option>
+                <option value="photo" ${m.kind === "photo" ? "selected" : ""}>Photo</option>
+                <option value="moment" ${m.kind === "moment" ? "selected" : ""}>Moment</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="mem-notes">What happened?</label>
+            <textarea id="mem-notes" placeholder="Who was there, what made it special…">${esc(m.notes || "")}</textarea>
+          </div>
+          <div class="field">
+            <label for="mem-photo">Photo (optional)</label>
+            <input type="file" id="mem-photo" accept="image/*" />
+            <p class="text-sm text-muted mt-8">Photos are resized so they don’t fill up the browser storage.</p>
+          </div>
+          <div id="mem-preview" class="memory-preview ${pendingPhoto ? "" : "hidden"}">
+            ${pendingPhoto ? `<img src="${pendingPhoto}" alt="Preview" />` : ""}
+            ${pendingPhoto ? `<button type="button" class="btn btn-ghost btn-sm mt-8" id="mem-clear-photo">Remove photo</button>` : ""}
+          </div>
+        </div>`,
+      footerHtml: footerSave(existing),
+    });
+
+    const fileInput = document.getElementById("mem-photo");
+    const preview = document.getElementById("mem-preview");
+
+    function showPreview(dataUrl) {
+      pendingPhoto = dataUrl || "";
+      if (!preview) return;
+      if (pendingPhoto) {
+        preview.classList.remove("hidden");
+        preview.innerHTML = `<img src="${pendingPhoto}" alt="Preview" />
+          <button type="button" class="btn btn-ghost btn-sm mt-8" id="mem-clear-photo">Remove photo</button>`;
+        document.getElementById("mem-clear-photo").onclick = () => showPreview("");
+      } else {
+        preview.classList.add("hidden");
+        preview.innerHTML = "";
+      }
+    }
+
+    if (document.getElementById("mem-clear-photo")) {
+      document.getElementById("mem-clear-photo").onclick = () => showPreview("");
+    }
+
+    fileInput.onchange = async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      try {
+        toast("Processing photo…");
+        const dataUrl = await compressImageFile(file);
+        // Rough size guard (~1.5MB string)
+        if (dataUrl.length > 1.8e6) {
+          toast("Photo still too large — try a smaller image");
+          return;
+        }
+        showPreview(dataUrl);
+        toast("Photo ready");
+      } catch {
+        toast("Could not use that image");
+      }
+    };
+
+    document.getElementById("form-save").onclick = () => {
+      const title = val("mem-title");
+      if (!title) return toast("Add a title");
+      const data = {
+        title,
+        date: val("mem-date"),
+        kind: val("mem-kind") || "event",
+        notes: val("mem-notes"),
+        photo: pendingPhoto || "",
+        createdAt: existing?.createdAt || todayISO(),
+      };
+      try {
+        if (existing) Object.assign(existing, data);
+        else state.memories.push({ id: uid("mem"), ...data });
+        save();
+      } catch (err) {
+        toast("Storage full — remove an old memory or photo");
+        console.error(err);
+        return;
+      }
+      closeModal();
+      toast(existing ? "Memory updated" : "Memory saved");
+      if (currentView === "memories") render();
+      else setView("memories");
+    };
+  }
+
   // ——— SETTINGS ———
   function renderSettings() {
     return `
@@ -1853,6 +2075,19 @@
         state.links = state.links.filter((x) => x.id !== id);
         save();
         render();
+        break;
+
+      case "add-memory":
+      case "edit-memory":
+        openMemoryModal(action === "edit-memory" ? find(state.memories) : null);
+        break;
+      case "del-memory":
+        if (confirm("Delete this memory?")) {
+          state.memories = state.memories.filter((x) => x.id !== id);
+          save();
+          toast("Memory deleted");
+          render();
+        }
         break;
 
       case "timer-toggle":

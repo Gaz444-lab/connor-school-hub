@@ -767,6 +767,97 @@ button { cursor: pointer; border: none; background: none; }
   display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
 }
 
+/* Memories gallery */
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: clamp(12px, 1.5vw, 18px);
+}
+.memory-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  min-width: 0;
+}
+.memory-media {
+  aspect-ratio: 4 / 3;
+  background: var(--bg);
+  overflow: hidden;
+}
+.memory-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.memory-media.no-photo {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--purple-soft) 80%, var(--accent-soft)));
+}
+.memory-placeholder {
+  font-size: 2.5rem;
+  opacity: 0.85;
+}
+.memory-body {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.memory-title {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  word-break: break-word;
+}
+.memory-notes {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+.memory-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+.badge.type-photo {
+  background: var(--purple-soft);
+  color: var(--purple);
+}
+.memory-preview {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding: 8px;
+}
+.memory-preview.hidden { display: none; }
+.memory-preview img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  display: block;
+  border-radius: 8px;
+}
+[data-look="glass"] .memory-card {
+  background: var(--card);
+  backdrop-filter: blur(var(--glass-blur, 18px)) saturate(var(--glass-sat, 1.35));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 18px)) saturate(var(--glass-sat, 1.35));
+}
+
 /* Settings appearance choices */
 .choice-row {
   display: grid;
