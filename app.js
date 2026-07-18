@@ -62,6 +62,11 @@
   let assessFilter = "grade10"; // grade10 | mine | starred | all
   let assessTerm = "all"; // all | T1 | T2 | T3 | T4
   let assessQuery = "";
+  let assessView = "calendar"; // calendar | list
+  let assessMonth = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  })(); // YYYY-MM
   let assessCatalog = null; // loaded from data/assessments-2026.json
   let toastTimer = null;
   let studyTimer = null;
@@ -76,8 +81,9 @@
       studentName: "Connor",
       school: "Fish Hoek High School",
       grade: "10",
-      theme: "light",
-      look: "normal", // normal | glass
+      theme: "dark",
+      look: "glass", // normal | glass
+      seededFromAssessments: false,
       subjects: CONNOR_SUBJECTS.map((s) => ({ ...s })),
       homework: [],
       projects: [],
@@ -474,8 +480,8 @@
 
     return `
       <div class="greeting">
-        <h2>${greeting()}, ${esc(state.studentName)}! 👋</h2>
-        <p>Your Grade ${esc(state.grade)} command centre for the day.</p>
+        <h2>${greeting()}, ${esc(state.studentName)} ⚡</h2>
+        <p>Grade ${esc(state.grade)} · Fish Hoek · let's get it.</p>
         <span class="school-tag">${esc(state.school)}</span>
         ${state.studyStreak > 0 ? `<span class="streak" style="margin-left:6px">🔥 ${state.studyStreak}-day study streak</span>` : ""}
       </div>
@@ -1100,47 +1106,23 @@
 
     const list = filteredAssessments();
     const starredCount = Object.keys(state.assessmentHighlights || {}).length;
-    const upcomingStarred = (assessCatalog.assessments || [])
-      .filter((a) => isHighlighted(a.id) && a.date && a.date >= todayISO())
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 5);
+    const dayList = list.filter((a) => a.date === agendaDate);
 
     return `
       <div class="view-header">
         <div>
           <h2>Assessments</h2>
-          <p>${esc(assessCatalog.source || "2026 timetable")} · tap ⭐ for ones that affect you</p>
+          <p>Calendar + list · ⭐ what affects you · push into Work anytime</p>
         </div>
-      </div>
-      <div class="card mb-12">
-        <p class="text-sm text-muted" style="margin:0 0 8px">
-          ${esc(assessCatalog.note || "")}
-          Highlighted: <strong>${starredCount}</strong>
-        </p>
-        ${
-          upcomingStarred.length
-            ? `<div class="item-list">${upcomingStarred
-                .map(
-                  (a) =>
-                    `<div class="item assess-item highlighted compact">
-                      <span class="star-btn on">⭐</span>
-                      <div class="item-body">
-                        <p class="item-title">${esc(a.title)}</p>
-                        <div class="item-meta">
-                          <span class="badge soon">${a.date ? formatDate(a.date) : "Date TBC"}</span>
-                          ${a.subjectGuess ? `<span class="badge">${esc(a.subjectGuess)}</span>` : ""}
-                        </div>
-                      </div>
-                    </div>`
-                )
-                .join("")}</div>`
-            : `<p class="text-sm text-muted" style="margin:0">Star Grade 10 items for your subjects to pin them here and on Today.</p>`
-        }
+        <div class="view-toggle" role="group" aria-label="View mode">
+          <button type="button" class="chip ${assessView === "calendar" ? "active" : ""}" data-assess-view="calendar">Calendar</button>
+          <button type="button" class="chip ${assessView === "list" ? "active" : ""}" data-assess-view="list">List</button>
+        </div>
       </div>
       <div class="filters">
         <button type="button" class="chip ${assessFilter === "grade10" ? "active" : ""}" data-assess-filter="grade10">Grade 10 + school</button>
         <button type="button" class="chip ${assessFilter === "mine" ? "active" : ""}" data-assess-filter="mine">Likely mine</button>
-        <button type="button" class="chip ${assessFilter === "starred" ? "active" : ""}" data-assess-filter="starred">⭐ Highlighted</button>
+        <button type="button" class="chip ${assessFilter === "starred" ? "active" : ""}" data-assess-filter="starred">⭐ Highlighted (${starredCount})</button>
         <button type="button" class="chip ${assessFilter === "all" ? "active" : ""}" data-assess-filter="all">All grades</button>
       </div>
       <div class="filters">
@@ -1155,16 +1137,112 @@
       <div class="field mb-12">
         <input id="assess-search" type="search" placeholder="Search title, subject, venue…" value="${esc(assessQuery)}" />
       </div>
-      <div class="flex-between mb-12">
-        <span class="text-sm text-muted">${list.length} item${list.length === 1 ? "" : "s"}</span>
-        <button type="button" class="btn btn-secondary btn-sm" data-action="auto-star-mine">Auto-highlight my subjects</button>
+      <div class="flex-between mb-12" style="flex-wrap:wrap;gap:8px">
+        <span class="text-sm text-muted">${list.length} item${list.length === 1 ? "" : "s"} in filter</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-secondary btn-sm" data-action="auto-star-mine">Auto-highlight my subjects</button>
+          <button type="button" class="btn btn-primary btn-sm" data-action="seed-work-from-assess">Send to Work + Agenda</button>
+        </div>
       </div>
+      ${
+        assessView === "calendar"
+          ? renderAssessmentsCalendar(list)
+          : `<div class="card">${
+              list.length
+                ? `<div class="item-list">${list.map(assessmentItemHtml).join("")}</div>`
+                : `<div class="empty"><div class="empty-icon">📌</div><p>Nothing matches these filters.</p></div>`
+            }</div>`
+      }
+      ${
+        assessView === "calendar"
+          ? `<div class="card mt-12">
+              <h3 class="card-title">${formatDate(agendaDate)} <span class="count">${dayList.length}</span></h3>
+              ${
+                dayList.length
+                  ? `<div class="item-list">${dayList.map(assessmentItemHtml).join("")}</div>`
+                  : `<p class="text-sm text-muted" style="margin:0">Nothing on this day for the current filters. Tap another day or switch filters.</p>`
+              }
+            </div>`
+          : ""
+      }
+      <p class="text-sm text-muted mt-12">${esc(assessCatalog.note || "")}</p>`;
+  }
+
+  function renderAssessmentsCalendar(list) {
+    const [y, m] = assessMonth.split("-").map(Number);
+    const first = new Date(y, m - 1, 1);
+    const startPad = (first.getDay() + 6) % 7; // Mon=0
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const prevMonthDays = new Date(y, m - 1, 0).getDate();
+    const byDate = {};
+    list.forEach((a) => {
+      if (!a.date) return;
+      if (!byDate[a.date]) byDate[a.date] = [];
+      byDate[a.date].push(a);
+    });
+
+    const cells = [];
+    for (let i = 0; i < startPad; i++) {
+      const day = prevMonthDays - startPad + i + 1;
+      const pm = m === 1 ? 12 : m - 1;
+      const py = m === 1 ? y - 1 : y;
+      const iso = `${py}-${String(pm).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      cells.push({ iso, day, outside: true });
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      cells.push({ iso, day: d, outside: false });
+    }
+    while (cells.length % 7 !== 0) {
+      const d = cells.length - (startPad + daysInMonth) + 1;
+      const nm = m === 12 ? 1 : m + 1;
+      const ny = m === 12 ? y + 1 : y;
+      const iso = `${ny}-${String(nm).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      cells.push({ iso, day: d, outside: true });
+    }
+
+    const monthLabel = first.toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
+    const dows = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+    return `
       <div class="card">
-        ${
-          list.length
-            ? `<div class="item-list">${list.map(assessmentItemHtml).join("")}</div>`
-            : `<div class="empty"><div class="empty-icon">📌</div><p>Nothing matches these filters.</p></div>`
-        }
+        <div class="cal-month-bar">
+          <button type="button" class="btn btn-ghost btn-sm" data-action="assess-month-prev">← Prev</button>
+          <h3>${esc(monthLabel)}</h3>
+          <div style="display:flex;gap:6px">
+            <button type="button" class="btn btn-secondary btn-sm" data-action="assess-month-today">Today</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-action="assess-month-next">Next →</button>
+          </div>
+        </div>
+        <div class="cal-month-grid">
+          ${dows.map((d) => `<div class="cal-month-dow">${d}</div>`).join("")}
+          ${cells
+            .map((c) => {
+              const items = byDate[c.iso] || [];
+              const isToday = c.iso === todayISO();
+              const sel = c.iso === agendaDate;
+              const shown = items.slice(0, 3);
+              const more = items.length - shown.length;
+              return `<button type="button" class="cal-month-cell ${c.outside ? "outside" : ""} ${isToday ? "today" : ""} ${items.length ? "has-items" : ""} ${sel ? "selected" : ""}" data-agenda-date="${c.iso}" data-assess-pick-day="${c.iso}">
+                <span class="cal-day-num">${c.day}</span>
+                <div class="cal-dots">
+                  ${shown
+                    .map((a) => {
+                      const cls = [
+                        isHighlighted(a.id) ? "starred" : "",
+                        a.kind === "exam" ? "exam" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ");
+                      return `<span class="cal-dot-label ${cls}" title="${esc(a.title)}">${esc(a.title)}</span>`;
+                    })
+                    .join("")}
+                  ${more > 0 ? `<span class="cal-more">+${more} more</span>` : ""}
+                </div>
+              </button>`;
+            })
+            .join("")}
+        </div>
       </div>`;
   }
 
@@ -1208,6 +1286,161 @@
     });
     save();
     return n;
+  }
+
+  function subjectIdFromGuess(guess, title) {
+    const g = `${guess || ""} ${title || ""}`.toLowerCase();
+    const pairs = [
+      ["art", "sub-art"],
+      ["visual", "sub-art"],
+      ["v.art", "sub-art"],
+      ["drama", "sub-drama"],
+      ["english", "sub-eng"],
+      ["afrikaans", "sub-afr"],
+      ["isixhosa", "sub-afr"],
+      ["maths lit", "sub-ml"],
+      ["math. lit", "sub-ml"],
+      ["math lit", "sub-ml"],
+      ["life orientation", "sub-lo"],
+      ["history", "sub-hist"],
+      ["egd", "sub-egd"],
+    ];
+    for (const [key, id] of pairs) {
+      if (g.includes(key)) {
+        const exists = state.subjects.find((s) => s.id === id);
+        if (exists) return id;
+      }
+    }
+    // fuzzy match subject names
+    for (const s of state.subjects) {
+      if (g.includes(s.name.toLowerCase())) return s.id;
+    }
+    return state.subjects[0]?.id || "";
+  }
+
+  function classifyAssessment(a) {
+    const t = (a.title || "").toLowerCase();
+    if (a.kind === "exam") return "test";
+    if (/\bexam\b|prelim|control test|test:|\bp\.?\s*\d|paper\b|cycle test/.test(t)) return "test";
+    if (/project|pat\b|research|essay|portfolio|due date|final due/.test(t)) return "project";
+    if (/tutorial|prac|reading|writing|task|homework|sba|class test|prepared|process writing/.test(t))
+      return "homework";
+    if (
+      /outing|camp|evening|assembly|awards|derby|holiday|celebration|parents|concert|race|bleed|exhibition|service/.test(
+        t
+      )
+    )
+      return "event";
+    if (matchesMySubjects(a)) return "homework";
+    return "event";
+  }
+
+  function alreadyImported(sourceId) {
+    return (
+      state.homework.some((h) => h.sourceAssessId === sourceId) ||
+      state.projects.some((p) => p.sourceAssessId === sourceId) ||
+      state.tests.some((t) => t.sourceAssessId === sourceId) ||
+      state.events.some((e) => e.sourceAssessId === sourceId)
+    );
+  }
+
+  /**
+   * Pull Grade 10 items that look relevant into Work + Agenda.
+   * Dedupe by sourceAssessId so re-run only adds new ones.
+   */
+  function seedWorkFromAssessments({ forceMineOnly = true } = {}) {
+    if (!assessCatalog?.assessments) return { hw: 0, pr: 0, te: 0, ev: 0 };
+    const counts = { hw: 0, pr: 0, te: 0, ev: 0 };
+    const candidates = assessCatalog.assessments.filter((a) => {
+      if (!a.date) return false;
+      if (a.grade === 10) {
+        if (forceMineOnly) return matchesMySubjects(a) || isHighlighted(a.id);
+        return true;
+      }
+      // school-wide events (no grade)
+      if (a.grade == null) {
+        const kind = classifyAssessment(a);
+        return kind === "event" || isHighlighted(a.id);
+      }
+      return false;
+    });
+
+    candidates.forEach((a) => {
+      if (alreadyImported(a.id)) return;
+      const kind = classifyAssessment(a);
+      const subId = subjectIdFromGuess(a.subjectGuess, a.title);
+      const notes = [
+        a.time ? `Time: ${a.time}` : "",
+        a.venue ? `Venue: ${a.venue}` : "",
+        a.hours ? `Duration: ${a.hours}` : "",
+        a.term ? `Term: ${a.term}` : "",
+        "From 2026 FHHS assessment timetable — edit or delete if not yours.",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      if (kind === "test") {
+        state.tests.push({
+          id: uid("te"),
+          title: a.title,
+          subjectId: subId,
+          date: a.date,
+          topic: a.subjectGuess || "",
+          notes,
+          done: false,
+          sourceAssessId: a.id,
+        });
+        counts.te++;
+      } else if (kind === "project") {
+        state.projects.push({
+          id: uid("pr"),
+          title: a.title,
+          subjectId: subId,
+          due: a.date,
+          progress: 0,
+          notes,
+          done: false,
+          sourceAssessId: a.id,
+        });
+        counts.pr++;
+      } else if (kind === "homework") {
+        state.homework.push({
+          id: uid("hw"),
+          title: a.title,
+          subjectId: subId,
+          due: a.date,
+          priority: /exam|test|pat/i.test(a.title) ? "high" : "medium",
+          notes,
+          done: false,
+          createdAt: todayISO(),
+          sourceAssessId: a.id,
+        });
+        counts.hw++;
+      } else {
+        state.events.push({
+          id: uid("ev"),
+          title: a.title,
+          date: a.date,
+          time: (a.time || "").split("–")[0] || "",
+          notes,
+          sourceAssessId: a.id,
+        });
+        counts.ev++;
+      }
+      // also highlight so Today picks them up
+      if (!state.assessmentHighlights) state.assessmentHighlights = {};
+      state.assessmentHighlights[a.id] = true;
+    });
+
+    state.seededFromAssessments = true;
+    save();
+    return counts;
+  }
+
+  function shiftAssessMonth(delta) {
+    const [y, m] = assessMonth.split("-").map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    assessMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
 
   // ——— SIDEBAR SECTIONS ———
@@ -2149,6 +2382,20 @@
       render();
       return;
     }
+    const av = e.target.closest("[data-assess-view]");
+    if (av) {
+      assessView = av.dataset.assessView;
+      render();
+      return;
+    }
+    const pickDay = e.target.closest("[data-assess-pick-day]");
+    if (pickDay) {
+      agendaDate = pickDay.dataset.assessPickDay;
+      // keep month in sync if needed
+      if (agendaDate && agendaDate.length >= 7) assessMonth = agendaDate.slice(0, 7);
+      render();
+      return;
+    }
 
     const el = e.target.closest("[data-action]");
     if (!el) return;
@@ -2367,6 +2614,33 @@
         render();
         break;
       }
+      case "seed-work-from-assess": {
+        autoStarMySubjects();
+        const c = seedWorkFromAssessments({ forceMineOnly: true });
+        const total = c.hw + c.pr + c.te + c.ev;
+        toast(
+          total
+            ? `Added ${c.hw} homework · ${c.pr} projects · ${c.te} tests · ${c.ev} events`
+            : "Nothing new to import (already synced or no matches)"
+        );
+        render();
+        break;
+      }
+      case "assess-month-prev":
+        shiftAssessMonth(-1);
+        render();
+        break;
+      case "assess-month-next":
+        shiftAssessMonth(1);
+        render();
+        break;
+      case "assess-month-today": {
+        const t = todayISO();
+        agendaDate = t;
+        assessMonth = t.slice(0, 7);
+        render();
+        break;
+      }
 
       case "timer-toggle":
         studyRunning = !studyRunning;
@@ -2518,7 +2792,17 @@
       })
       .then((data) => {
         assessCatalog = data;
-        if (currentView === "assessments" || currentView === "today") render();
+        // First time: auto-highlight Connor subjects + seed Work/Agenda
+        if (!state.seededFromAssessments && assessCatalog.assessments?.length) {
+          autoStarMySubjects();
+          const c = seedWorkFromAssessments({ forceMineOnly: true });
+          const total = c.hw + c.pr + c.te + c.ev;
+          if (total > 0) {
+            toast(`Loaded ${total} items from the assessment timetable into Work & Agenda`);
+          }
+        }
+        if (currentView === "assessments" || currentView === "today" || currentView === "work" || currentView === "agenda")
+          render();
       })
       .catch(() => {
         assessCatalog = {
