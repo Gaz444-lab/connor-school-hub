@@ -16,57 +16,64 @@ Built as a static web app — no server, no install. Data is saved in the browse
 | **Routines** | Morning “to school” and after-school checklists (reset each day) |
 | **Settings** | Rename student, manage subjects, dark mode, export/import backup |
 
-## Run locally
+## Live app (easiest on a MacBook)
 
-Open `index.html` in a browser, or from this folder:
+**Open in the browser (always the latest code after GitHub Pages builds):**
+
+👉 **https://gaz444-lab.github.io/connor-school-hub/**
+
+Bookmark that URL on Connor’s MacBook, or keep it in the Dock.
+
+---
+
+## One-time setup on Connor’s Mac (Desktop shortcut + auto-updates)
+
+On **Connor’s MacBook**, open **Terminal** and paste:
 
 ```bash
-# Python
-python3 -m http.server 8080
-
-# or Node
-npx --yes serve .
+curl -fsSL https://raw.githubusercontent.com/Gaz444-lab/connor-school-hub/main/scripts/setup-for-connor.sh | bash
 ```
 
-Then visit `http://localhost:8080`.
+That will:
 
-## Push to GitHub (so Connor gets app updates)
+1. Download the app into `~/Documents/connor-school-hub`
+2. Put **Connor School Hub** on the Desktop
 
-1. Create a new **empty** repository on GitHub (e.g. `connor-school-hub`).
-2. In this folder:
+Then he double-clicks **Connor School Hub** on the Desktop.  
+Each launch: pull latest from GitHub → open the app in the browser.
+
+macOS may ask to allow Terminal the first time — choose **Open**.
+
+### Already cloned?
+
+```bash
+cd ~/Documents/connor-school-hub   # or wherever it lives
+bash scripts/setup-for-connor.sh
+```
+
+Or double-click **Open School Hub.command** inside the project folder.
+
+---
+
+## Repo
+
+- GitHub: https://github.com/Gaz444-lab/connor-school-hub  
+- Pages: https://gaz444-lab.github.io/connor-school-hub/
+
+### Updating the app (dad)
+
+Edit files on your machine, then:
 
 ```bash
 cd ~/connor-school-hub
-git init
-git add .
-git commit -m "Initial commit: Connor's School Hub"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/connor-school-hub.git
-git push -u origin main
-```
-
-3. Enable **GitHub Pages**:
-   - Repo → **Settings** → **Pages**
-   - Source: **Deploy from a branch**
-   - Branch: `main` / folder `/ (root)` → Save
-
-4. After a minute, the app is live at:
-
-   `https://YOUR_USERNAME.github.io/connor-school-hub/`
-
-Share that link with Connor (bookmark it, or “Add to Home Screen” on iPhone/Android for an app-like icon).
-
-### Updating the app later
-
-Edit files → commit → push. Pages redeploys automatically. Connor refreshes the page (or reopens the bookmark) to get the new version.
-
-```bash
 git add .
 git commit -m "Describe the change"
 git push
 ```
 
-> **Note:** App *code* updates via GitHub. Connor’s *personal data* (homework list, etc.) lives in his browser. Use **Settings → Export backup** if he needs to move data to another device.
+Pages redeploys in about a minute. Connor’s Desktop shortcut also runs `git pull` when he opens it.
+
+> **Note:** App *code* updates via GitHub. Connor’s *personal data* (homework list, etc.) lives in **his** browser. Use **Settings → Export backup** to move data between devices.
 
 ## Add to Home Screen (phone)
 
