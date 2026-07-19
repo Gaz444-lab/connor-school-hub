@@ -7,10 +7,17 @@
 
   const STORAGE_KEY = "connor-school-hub-v2";
   const LEGACY_KEY = "connor-school-hub-v1";
+  /** Calendar weekdays (agenda etc.) */
   const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  /** FHHS bi-weekly teaching cycle (Connor's card) */
+  const CYCLE_DAYS = [
+    "Day 1", "Day 2", "Day 3", "Day 4", "Day 5",
+    "Day 6", "Day 7", "Day 8", "Day 9", "Day 10",
+  ];
   const SUBJECT_COLORS = [
     "#e11d48", "#7c3aed", "#2563eb", "#0891b2",
     "#16a34a", "#ca8a04", "#ea580c", "#4f46e5",
+    "#db2777", "#0d9488",
   ];
 
   /** Fish Hoek High · Grade 10 subjects (Connor) */
@@ -23,7 +30,50 @@
     { id: "sub-lo", name: "Life Orientation", color: "#ca8a04" },
     { id: "sub-hist", name: "History", color: "#ea580c" },
     { id: "sub-egd", name: "EGD", color: "#4f46e5" },
+    { id: "sub-pe", name: "PE", color: "#db2777" },
+    { id: "sub-asse", name: "Assembly", color: "#0d9488" },
   ];
+
+  /** Card codes → subject id (AEM/AEW read from handwriting — tweak in Timetable if needed) */
+  const TIMETABLE_CODE_MAP = {
+    ENG: "sub-eng",
+    PE: "sub-pe",
+    AFR: "sub-afr",
+    DRAMA: "sub-drama",
+    ART: "sub-art",
+    HIST: "sub-hist",
+    EGD: "sub-egd",
+    ASSE: "sub-asse",
+    LO: "sub-lo",
+    ML: "sub-ml",
+    AEM: "sub-art",
+    AEW: "sub-afr",
+  };
+
+  const PERIOD_TIMES = [
+    { period: 1, start: "07:50", end: "08:35" },
+    { period: 2, start: "08:35", end: "09:20" },
+    { period: 3, start: "09:20", end: "10:05" },
+    { period: 4, start: "10:25", end: "11:10" },
+    { period: 5, start: "11:10", end: "11:55" },
+    { period: 6, start: "11:55", end: "12:40" },
+    { period: 7, start: "13:10", end: "13:55" },
+    { period: 8, start: "13:55", end: "14:40" },
+  ];
+
+  /** Bi-weekly grid from Connor's handwritten Day 1–10 card (null = free) */
+  const BIWEEKLY_GRID = {
+    "Day 1": ["ENG", "DRAMA", "AFR", "LO", "ART", "ART", "HIST", "ML"],
+    "Day 2": ["PE", "HIST", "EGD", "AFR", "DRAMA", "ML", "ENG", "DRAMA"],
+    "Day 3": ["ENG", "ENG", "ASSE", "ML", "AFR", "HIST", "ART", null],
+    "Day 4": ["AFR", "HIST", "ART", "DRAMA", "ENG", "LO", "ML", null],
+    "Day 5": ["DRAMA", "ART", "ENG", "ML", "ML", "HIST", "AFR", "ENG"],
+    "Day 6": ["ART", "AFR", "DRAMA", "ML", "HIST", "HIST", "PE", "ART"],
+    "Day 7": ["HIST", "LO", "ML", "DRAMA", "AFR", "ENG", "ML", "ENG"],
+    "Day 8": ["AEM", "AEW", "AFR", "DRAMA", "HIST", "DRAMA", "ART", "ART"],
+    "Day 9": ["HIST", "ML", "EGD", "AFR", "DRAMA", "ML", "ENG", "ASSE"],
+    "Day 10": ["DRAMA", "AFR", "AFR", "ENG", "HIST", "ML", "ART", null],
+  };
 
   const DEFAULT_ROUTINES = {
     morning: [
@@ -55,7 +105,8 @@
   let state = loadState();
   let currentView = "today";
   let workTab = "homework";
-  let selectedDay = todayWeekdayIndex();
+  /** Index 0–9 into CYCLE_DAYS for timetable tabs */
+  let selectedCycleDay = 0;
   let agendaDate = todayISO();
   let hwFilter = "open";
   let gradeSubjectFilter = "all";
@@ -93,7 +144,11 @@
       events: [],
       goals: [],
       studyLog: [],
+      /** Keys: "Day 1" … "Day 10" (bi-weekly FHHS cycle) */
       timetable: {},
+      /** When set: that calendar date was this cycle day (1–10); auto-advances on school days */
+      cycleAnchor: null, // { date: "YYYY-MM-DD", day: 1 }
+      timetableSeeded: false,
       links: DEFAULT_LINKS.map((l) => ({ ...l })),
       memories: [],
       /** Assessment ids starred as "affects me" from the 2026 FHHS timetable */
@@ -153,6 +208,9 @@
         studyLog: parsed.studyLog || [],
         memories: parsed.memories || [],
         assessmentHighlights: parsed.assessmentHighlights || {},
+        cycleAnchor: parsed.cycleAnchor || null,
+        timetableSeeded: !!parsed.timetableSeeded,
+        timetable: parsed.timetable || {},
       };
     } catch {
       return defaultState();
@@ -161,6 +219,132 @@
 
   function save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  /** Ensure PE / Assembly exist on upgraded installs */
+  function ensureTimetableSubjects() {
+    const have = new Set((state.subjects || []).map((s) => s.id));
+    for (const s of CONNOR_SUBJECTS) {
+      if (!have.has(s.id)) {
+        state.subjects.push({ ...s });
+        have.add(s.id);
+      }
+    }
+  }
+
+  function buildBiweeklyTimetable() {
+    const tt = {};
+    for (const dayName of CYCLE_DAYS) {
+      const codes = BIWEEKLY_GRID[dayName] || [];
+      tt[dayName] = [];
+      codes.forEach((code, idx) => {
+        if (!code) return;
+        const times = PERIOD_TIMES[idx] || { start: "", end: "" };
+        const subjectId = TIMETABLE_CODE_MAP[code] || "";
+        const notes =
+          code === "AEM" || code === "AEW"
+            ? `Card code ${code} (edit if misread)`
+            : "";
+        tt[dayName].push({
+          id: `pe-seed-${dayName.replace(/\s/g, "")}-p${idx + 1}`,
+          subjectId,
+          start: times.start,
+          end: times.end,
+          room: "",
+          notes,
+          period: idx + 1,
+          code,
+        });
+      });
+    }
+    return tt;
+  }
+
+  function seedBiweeklyTimetable(force) {
+    ensureTimetableSubjects();
+    const empty =
+      !state.timetable ||
+      !Object.keys(state.timetable).length ||
+      !CYCLE_DAYS.some((d) => (state.timetable[d] || []).length);
+    if (!force && state.timetableSeeded && !empty) return false;
+    state.timetable = buildBiweeklyTimetable();
+    state.timetableSeeded = true;
+    if (!state.cycleAnchor) {
+      // Default: today is Day 1 until Connor sets the real cycle day
+      state.cycleAnchor = { date: todayISO(), day: 1 };
+    }
+    save();
+    return true;
+  }
+
+  /** Count Mon–Fri school days from fromISO (inclusive) to toISO (inclusive). */
+  function schoolDaysBetween(fromISO, toISO) {
+    if (!fromISO || !toISO) return 0;
+    const a = new Date(fromISO + "T12:00:00");
+    const b = new Date(toISO + "T12:00:00");
+    if (b < a) return -schoolDaysBetween(toISO, fromISO);
+    let n = 0;
+    const cur = new Date(a);
+    while (cur <= b) {
+      const js = cur.getDay();
+      if (js !== 0 && js !== 6) n++;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return n;
+  }
+
+  /** Current FHHS cycle day number 1–10 (weekends keep Friday's day). */
+  function todayCycleDayNumber() {
+    const js = new Date().getDay();
+    // Weekend: show Friday's cycle day for packing
+    let refISO = todayISO();
+    if (js === 0) {
+      const d = new Date();
+      d.setDate(d.getDate() - 2);
+      refISO = d.toISOString().slice(0, 10);
+    } else if (js === 6) {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      refISO = d.toISOString().slice(0, 10);
+    }
+
+    if (!state.cycleAnchor?.date || !state.cycleAnchor?.day) {
+      return 1;
+    }
+    const anchor = state.cycleAnchor;
+    // School days elapsed after the anchor date
+    const a = new Date(anchor.date + "T12:00:00");
+    const b = new Date(refISO + "T12:00:00");
+    let schoolSteps = 0;
+    if (b > a) {
+      const cur = new Date(a);
+      cur.setDate(cur.getDate() + 1);
+      while (cur <= b) {
+        const j = cur.getDay();
+        if (j !== 0 && j !== 6) schoolSteps++;
+        cur.setDate(cur.getDate() + 1);
+      }
+    } else if (b < a) {
+      const cur = new Date(b);
+      cur.setDate(cur.getDate() + 1);
+      while (cur <= a) {
+        const j = cur.getDay();
+        if (j !== 0 && j !== 6) schoolSteps--;
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    const day = ((((anchor.day - 1 + schoolSteps) % 10) + 10) % 10) + 1;
+    return day;
+  }
+
+  function todayCycleDayName() {
+    return `Day ${todayCycleDayNumber()}`;
+  }
+
+  function setCycleDayToday(dayNum) {
+    const n = Math.min(10, Math.max(1, Number(dayNum) || 1));
+    state.cycleAnchor = { date: todayISO(), day: n };
+    save();
   }
 
   function uid(prefix) {
@@ -465,7 +649,7 @@
       .filter((t) => !t.done && daysUntil(t.date) !== null && daysUntil(t.date) >= 0)
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 4);
-    const dayName = DAYS[todayWeekdayIndex()];
+    const dayName = todayCycleDayName();
     const periods = (state.timetable[dayName] || []).slice().sort(sortPeriods);
     const hm = nowHM();
     const nextPeriod = periods.find((p) => (p.end || p.start || "") > hm);
@@ -498,9 +682,9 @@
               return `<div class="card mb-12">
                 <h3 class="card-title">Up next · ${esc(dayName)}</h3>
                 <div class="period now" style="--subject:${sub?.color || "var(--accent-bright)"}">
-                  <div class="period-time">${esc(nextPeriod.start || "")}<br>${esc(nextPeriod.end || "")}</div>
+                  <div class="period-time">${nextPeriod.period ? `P${nextPeriod.period}<br>` : ""}${esc(nextPeriod.start || "")}<br>${esc(nextPeriod.end || "")}</div>
                   <div>
-                    <div class="period-subject">${esc(sub?.name || "Class")}</div>
+                    <div class="period-subject">${esc(sub?.name || nextPeriod.code || "Class")}</div>
                     ${nextPeriod.room ? `<div class="period-room">Room ${esc(nextPeriod.room)}</div>` : ""}
                   </div>
                 </div>
@@ -522,7 +706,9 @@
           }
         </div>
         <div class="card">
-          <h3 class="card-title">Today's classes <span class="count">${dayName}</span></h3>
+          <h3 class="card-title">Today's classes <span class="count">${dayName}</span>
+            <button type="button" class="btn btn-ghost btn-sm" data-action="set-cycle-today">Set day</button>
+          </h3>
           ${
             periods.length
               ? periods
@@ -531,16 +717,17 @@
                     const isNow = p.start && p.end && hm >= p.start && hm <= p.end;
                     return `
                     <div class="period ${isNow ? "now" : ""}" style="--subject:${sub?.color || "var(--accent-bright)"}">
-                      <div class="period-time">${esc(p.start || "")}<br>${esc(p.end || "")}</div>
+                      <div class="period-time">${p.period ? `P${p.period}<br>` : ""}${esc(p.start || "")}<br>${esc(p.end || "")}</div>
                       <div>
-                        <div class="period-subject">${esc(sub?.name || "Class")}</div>
+                        <div class="period-subject">${esc(sub?.name || p.code || "Class")}</div>
                         ${p.room ? `<div class="period-room">Room ${esc(p.room)}</div>` : ""}
                       </div>
                     </div>`;
                   })
                   .join("")
               : `<div class="empty"><p>No timetable for ${esc(dayName)} yet.</p>
-                 <button type="button" class="btn btn-secondary btn-sm" data-goto="timetable">Set schedule</button></div>`
+                 <button type="button" class="btn btn-secondary btn-sm" data-goto="timetable">Open timetable</button>
+                 <button type="button" class="btn btn-primary btn-sm" data-action="reload-biweekly">Load bi-weekly card</button></div>`
           }
         </div>
       </div>
@@ -1445,35 +1632,49 @@
 
   // ——— SIDEBAR SECTIONS ———
   function renderTimetable() {
-    const dayName = DAYS[selectedDay];
+    const dayName = CYCLE_DAYS[selectedCycleDay] || todayCycleDayName();
     const periods = (state.timetable[dayName] || []).slice().sort(sortPeriods);
-    const todayIdx = todayWeekdayIndex();
+    const todayCycle = todayCycleDayNumber();
+    const todayIdx = todayCycle - 1;
     return `
       <div class="view-header">
         <div>
           <h2>Timetable</h2>
-          <p>Fish Hoek High · weekly schedule</p>
+          <p>Fish Hoek High · bi-weekly Day 1–10 cycle</p>
         </div>
-        <button type="button" class="btn btn-primary" data-action="add-period">+ Class</button>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <button type="button" class="btn btn-secondary" data-action="set-cycle-today">Today is Day…</button>
+          <button type="button" class="btn btn-ghost" data-action="reload-biweekly">Reload from card</button>
+          <button type="button" class="btn btn-primary" data-action="add-period">+ Class</button>
+        </div>
       </div>
-      <div class="day-tabs">
-        ${DAYS.map(
+      <div class="card mb-12">
+        <p class="text-sm text-muted" style="margin:0">
+          School today: <strong>Day ${todayCycle}</strong>
+          ${state.cycleAnchor?.date ? ` · cycle anchored ${esc(state.cycleAnchor.date)} = Day ${state.cycleAnchor.day}` : " · set which Day it is so Today stays correct"}
+          · weekends keep Friday’s day
+        </p>
+      </div>
+      <div class="day-tabs" style="flex-wrap:wrap">
+        ${CYCLE_DAYS.map(
           (d, i) =>
-            `<button type="button" class="day-tab ${i === selectedDay ? "active" : ""} ${i === todayIdx ? "today" : ""}" data-day="${i}">${d.slice(0, 3)}</button>`
+            `<button type="button" class="day-tab ${i === selectedCycleDay ? "active" : ""} ${i === todayIdx ? "today" : ""}" data-day="${i}">${d.replace("Day ", "D")}</button>`
         ).join("")}
       </div>
       <div class="card">
-        <h3 class="card-title">${esc(dayName)}</h3>
+        <h3 class="card-title">${esc(dayName)}${dayName === todayCycleDayName() ? " · today" : ""}</h3>
         ${
           periods.length
             ? periods
                 .map((p) => {
                   const sub = subjectById(p.subjectId);
+                  const label = sub?.name || p.code || "Class";
                   return `<div class="period" style="--subject:${sub?.color || "var(--accent-bright)"}">
-                    <div class="period-time">${esc(p.start || "—")}<br>${esc(p.end || "")}</div>
+                    <div class="period-time">${p.period ? `P${p.period}<br>` : ""}${esc(p.start || "—")}<br>${esc(p.end || "")}</div>
                     <div>
-                      <div class="period-subject">${esc(sub?.name || "Class")}</div>
+                      <div class="period-subject">${esc(label)}</div>
                       ${p.room ? `<div class="period-room">Room ${esc(p.room)}</div>` : ""}
+                      ${p.notes ? `<div class="period-room">${esc(p.notes)}</div>` : ""}
                     </div>
                     <div class="item-actions">
                       <button type="button" class="icon-btn" data-action="edit-period" data-id="${p.id}" data-day="${esc(dayName)}">✏️</button>
@@ -1482,8 +1683,9 @@
                   </div>`;
                 })
                 .join("")
-            : `<div class="empty"><p>No classes on ${esc(dayName)}. Add your FHHS periods.</p>
-               <button type="button" class="btn btn-primary btn-sm" data-action="add-period">Add class</button></div>`
+            : `<div class="empty"><p>No classes on ${esc(dayName)}.</p>
+               <button type="button" class="btn btn-primary btn-sm" data-action="add-period">Add class</button>
+               <button type="button" class="btn btn-secondary btn-sm" data-action="reload-biweekly">Load bi-weekly card</button></div>`
         }
       </div>`;
   }
@@ -2348,7 +2550,7 @@
     }
     const dayTab = e.target.closest("[data-day]");
     if (dayTab && dayTab.classList.contains("day-tab")) {
-      selectedDay = Number(dayTab.dataset.day);
+      selectedCycleDay = Number(dayTab.dataset.day);
       render();
       return;
     }
@@ -2533,7 +2735,7 @@
         break;
 
       case "add-period":
-        openPeriodModal(DAYS[selectedDay], null);
+        openPeriodModal(CYCLE_DAYS[selectedCycleDay] || todayCycleDayName(), null);
         break;
       case "edit-period": {
         const day = el.dataset.day;
@@ -2548,6 +2750,37 @@
           save();
           render();
         }
+        break;
+      }
+      case "set-cycle-today": {
+        const cur = todayCycleDayNumber();
+        const ans = prompt(
+          "Which Day of the 10-day cycle is school today?\n(Enter a number 1–10)",
+          String(cur)
+        );
+        if (ans == null) break;
+        const n = parseInt(ans, 10);
+        if (!n || n < 1 || n > 10) {
+          toast("Enter 1–10");
+          break;
+        }
+        setCycleDayToday(n);
+        selectedCycleDay = n - 1;
+        toast(`Anchored: today is Day ${n}`);
+        render();
+        break;
+      }
+      case "reload-biweekly": {
+        if (
+          !confirm(
+            "Replace the timetable with Connor’s bi-weekly Day 1–10 card?\n(You can still edit classes after.)"
+          )
+        )
+          break;
+        seedBiweeklyTimetable(true);
+        selectedCycleDay = todayCycleDayNumber() - 1;
+        toast("Bi-weekly timetable loaded");
+        render();
         break;
       }
 
@@ -2727,6 +2960,7 @@
       case "reset-subjects":
         if (confirm("Replace subjects with Connor's FHHS Grade 10 list?")) {
           state.subjects = CONNOR_SUBJECTS.map((s) => ({ ...s }));
+          ensureTimetableSubjects();
           save();
           toast("Subjects restored");
           render();
@@ -2783,6 +3017,12 @@
   // ——— Boot ———
   applyTheme();
   studyRemaining = (state.focusMinutes || 25) * 60;
+  ensureTimetableSubjects();
+  // Load Connor's bi-weekly card if no Day 1–10 timetable yet
+  if (seedBiweeklyTimetable(false)) {
+    // first seed only
+  }
+  selectedCycleDay = Math.max(0, todayCycleDayNumber() - 1);
 
   function loadAssessmentCatalog() {
     return fetch("data/assessments-2026.json", { cache: "no-store" })

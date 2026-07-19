@@ -49,7 +49,8 @@ https://gaz444-lab.github.io/connor-school-hub/
 
 | Area | Features |
 |------|----------|
-| **Today** | Greeting, due/late counts, next class, focus list, today’s timetable, tests, routines & goals |
+| **Today** | Greeting, due/late counts, next class, focus list, **bi-weekly Day 1–10** timetable, tests, routines & goals |
+| **Timetable** | Connor’s FHHS Day 1–10 cycle (from his card) · set “today is Day X” so it tracks correctly |
 | **Agenda** | Week strip calendar — homework, tests, projects, custom events |
 | **Work** | Homework · Projects · Tests (priorities, due dates, progress bars) |
 | **Grades** | Log marks (score / out of / weight), subject averages, overall average |

@@ -1,0 +1,45 @@
+{
+  "title": "Connor · Fish Hoek High · Grade 10 bi-weekly cycle",
+  "cycle": "Day 1–10",
+  "note": "Seeded from Connor's handwritten card. Period times are typical FHHS-style placeholders — edit any class if a time differs. Day 8 AEM/AEW read from the card; adjust if wrong.",
+  "periodTimes": [
+    { "period": 1, "start": "07:50", "end": "08:35" },
+    { "period": 2, "start": "08:35", "end": "09:20" },
+    { "period": 3, "start": "09:20", "end": "10:05" },
+    { "period": 4, "start": "10:25", "end": "11:10" },
+    { "period": 5, "start": "11:10", "end": "11:55" },
+    { "period": 6, "start": "11:55", "end": "12:40" },
+    { "period": 7, "start": "13:10", "end": "13:55" },
+    { "period": 8, "start": "13:55", "end": "14:40" }
+  ],
+  "breaks": [
+    { "afterPeriod": 3, "label": "Break" },
+    { "afterPeriod": 6, "label": "Break" }
+  ],
+  "days": {
+    "Day 1": ["ENG", "DRAMA", "AFR", "LO", "ART", "ART", "HIST", "ML"],
+    "Day 2": ["PE", "HIST", "EGD", "AFR", "DRAMA", "ML", "ENG", "DRAMA"],
+    "Day 3": ["ENG", "ENG", "ASSE", "ML", "AFR", "HIST", "ART", null],
+    "Day 4": ["AFR", "HIST", "ART", "DRAMA", "ENG", "LO", "ML", null],
+    "Day 5": ["DRAMA", "ART", "ENG", "ML", "ML", "HIST", "AFR", "ENG"],
+    "Day 6": ["ART", "AFR", "DRAMA", "ML", "HIST", "HIST", "PE", "ART"],
+    "Day 7": ["HIST", "LO", "ML", "DRAMA", "AFR", "ENG", "ML", "ENG"],
+    "Day 8": ["AEM", "AEW", "AFR", "DRAMA", "HIST", "DRAMA", "ART", "ART"],
+    "Day 9": ["HIST", "ML", "EGD", "AFR", "DRAMA", "ML", "ENG", "ASSE"],
+    "Day 10": ["DRAMA", "AFR", "AFR", "ENG", "HIST", "ML", "ART", null]
+  },
+  "codes": {
+    "ENG": "English",
+    "PE": "PE",
+    "AFR": "Afrikaans",
+    "DRAMA": "Drama",
+    "ART": "Art",
+    "HIST": "History",
+    "EGD": "EGD",
+    "ASSE": "Assembly",
+    "LO": "Life Orientation",
+    "ML": "Maths Lit",
+    "AEM": "Art",
+    "AEW": "Afrikaans"
+  }
+}
